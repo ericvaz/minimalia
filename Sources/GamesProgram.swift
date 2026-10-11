@@ -51,7 +51,9 @@ enum GameLibrary {
             .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
             .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
         for folder in dosGames {
-            games.append(Game(title: folder.lastPathComponent, detail: "DOS", kind: .dos(folder)))
+            let start = executable(in: folder)
+            let detail = start.count == 1 ? "Starts with \(start[0].lastPathComponent.uppercased())" : "DOS game"
+            games.append(Game(title: folder.lastPathComponent, detail: detail, kind: .dos(folder)))
         }
 
         // Consoles: game files by extension, anywhere under CONSOLE.
@@ -126,6 +128,9 @@ final class GamesProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
     private let scroll = NSScrollView()
     private var statusLabel: NSTextField!
     private var games: [Game] = []
+    /// The selector's rows: a heading for each kind of game, then its games.
+    private enum Row { case heading(String), game(Game) }
+    private var rows: [Row] = []
     private var blocks: BlocksView?
     private var browse: BrowseProgram?
     private var running: Process?
@@ -198,33 +203,90 @@ final class GamesProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
 
     private func reload() {
         games = GameLibrary.scan()
+        rows = []
+        var order: [String] = []
+        var groups: [String: [Game]] = [:]
+        for g in games {
+            let group: String
+            switch g.kind {
+            case .blocks: group = "Minimalia"
+            case .dos: group = "DOS"
+            case .console(_, _, let system): group = system
+            case .classicMac: group = "Classic Macintosh"
+            }
+            if groups[group] == nil { order.append(group) }
+            groups[group, default: []].append(g)
+        }
+        for name in order {
+            rows.append(.heading(name))
+            rows += groups[name]!.map { .game($0) }
+        }
         table.reloadData()
-        table.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        if let first = rows.firstIndex(where: { if case .game = $0 { return true } else { return false } }) {
+            table.selectRowIndexes(IndexSet(integer: first), byExtendingSelection: false)
+        }
         let own = games.filter { if case .dos = $0.kind { return true }; if case .console = $0.kind { return true }; return false }.count
         statusLabel.stringValue = own == 0
             ? "Add your own DOS and console games with Add Games, or drop them in Documents/Minimalia/GAMES."
             : "\(own) of your games, plus BLOCKS and Classic Macintosh"
     }
 
-    func numberOfRows(in tableView: NSTableView) -> Int { games.count }
+    func numberOfRows(in tableView: NSTableView) -> Int { rows.count }
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? { ShelfRowView() }
+
+    func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+        if case .heading = rows[row] { return row == 0 ? 36 : 52 }
+        return 54
+    }
+
+    /// Arrow keys step over headings to the next game in the direction of travel.
+    func tableView(_ tableView: NSTableView, selectionIndexesForProposedSelection proposed: IndexSet) -> IndexSet {
+        guard let target = proposed.first, target < rows.count else { return proposed }
+        if case .game = rows[target] { return proposed }
+        let current = tableView.selectedRow
+        let down = target >= current
+        let search: [Int] = down ? Array(target..<rows.count) + Array((0..<target).reversed())
+                                 : Array((0...target).reversed()) + Array(target..<rows.count)
+        for i in search { if case .game = rows[i] { return IndexSet(integer: i) } }
+        return tableView.selectedRowIndexes
+    }
+
+    func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
+        if case .game = rows[row] { return true }
+        return false
+    }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let p = MonoPalette.current
-        let cell = (tableView.makeView(withIdentifier: .init("cell"), owner: self) as? ShelfCell) ?? ShelfCell()
-        cell.title.stringValue = games[row].title
-        cell.title.textColor = p.ink
-        cell.detail.stringValue = games[row].detail
-        cell.detail.textColor = p.dim
-        return cell
+        switch rows[row] {
+        case .heading(let name):
+            let l = NSTextField(labelWithString: name.uppercased())
+            l.font = .systemFont(ofSize: 11, weight: .semibold)
+            l.textColor = p.dim
+            let v = NSView()
+            l.translatesAutoresizingMaskIntoConstraints = false
+            v.addSubview(l)
+            NSLayoutConstraint.activate([
+                l.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 24),
+                l.bottomAnchor.constraint(equalTo: v.bottomAnchor, constant: -6),
+            ])
+            return v
+        case .game(let g):
+            let cell = (tableView.makeView(withIdentifier: .init("cell"), owner: self) as? ShelfCell) ?? ShelfCell()
+            cell.title.stringValue = g.title
+            cell.title.textColor = p.ink
+            cell.detail.stringValue = g.detail
+            cell.detail.textColor = p.dim
+            return cell
+        }
     }
 
     // MARK: Playing
 
     @objc private func playSelected(_ sender: Any?) {
         let r = table.selectedRow
-        guard r >= 0, r < games.count else { return }
-        play(games[r])
+        guard r >= 0, r < rows.count, case .game(let g) = rows[r] else { return }
+        play(g)
     }
 
     private func play(_ g: Game) {
