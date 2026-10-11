@@ -219,10 +219,16 @@ final class IMAPClient: @unchecked Sendable {
 
     private init(_ conn: MailConnection) { self.conn = conn }
 
-    static func connect(_ account: MailAccount, password: String) async throws -> IMAPClient {
+    static func connect(_ account: MailAccount, credential: MailCredential) async throws -> IMAPClient {
         let c = IMAPClient(MailConnection(host: account.imapHost, port: account.imapPort, tls: true))
         _ = try await c.readResponse()
-        _ = try await c.command("LOGIN \(quote(account.email)) \(quote(password))")
+        switch credential {
+        case .password(let password):
+            _ = try await c.command("LOGIN \(quote(account.email)) \(quote(password))")
+        case .google(let refresh):
+            let token = try await GoogleSignIn.accessToken(refresh: refresh)
+            _ = try await c.command("AUTHENTICATE XOAUTH2 \(MailCredential.xoauth2(email: account.email, token: token))")
+        }
         let caps = try await c.command("CAPABILITY")
         for r in caps where r.first?.text?.uppercased() == "CAPABILITY" {
             c.capabilities = Set(r.dropFirst().compactMap { $0.text?.uppercased() })
@@ -262,6 +268,11 @@ final class IMAPClient: @unchecked Sendable {
         while true {
             let r = try await readResponse()
             guard let first = r.first?.text else { continue }
+            if first == "+" {
+                // The server wants more; for a failed sign-in it sends an explanation and waits.
+                try await conn.send("\r\n")
+                continue
+            }
             if first == "*" {
                 untagged.append(Array(r.dropFirst()))
             } else if first == t {
@@ -690,7 +701,7 @@ enum SMTP {
         if !ok.contains(code) { throw MailError.server(text) }
     }
 
-    static func send(_ m: Outgoing, account: MailAccount, password: String) async throws {
+    static func send(_ m: Outgoing, account: MailAccount, credential: MailCredential) async throws {
         let implicit = account.smtpPort == 465
         let c = MailConnection(host: account.smtpHost, port: account.smtpPort, tls: implicit)
         defer { c.close() }
@@ -704,8 +715,14 @@ enum SMTP {
             try await c.send("EHLO minimalia\r\n")
             try await expect(c, 250...250)
         }
-        let auth = Data("\u{0}\(account.email)\u{0}\(password)".utf8).base64EncodedString()
-        try await c.send("AUTH PLAIN \(auth)\r\n")
+        switch credential {
+        case .password(let password):
+            let auth = Data("\u{0}\(account.email)\u{0}\(password)".utf8).base64EncodedString()
+            try await c.send("AUTH PLAIN \(auth)\r\n")
+        case .google(let refresh):
+            let token = try await GoogleSignIn.accessToken(refresh: refresh)
+            try await c.send("AUTH XOAUTH2 \(MailCredential.xoauth2(email: account.email, token: token))\r\n")
+        }
         try await expect(c, 235...235)
         try await c.send("MAIL FROM:<\(account.email)>\r\n")
         try await expect(c, 250...250)

@@ -107,7 +107,7 @@ final class LettersProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, N
     private var browse: BrowseProgram?
 
     private var account: MailAccount?
-    private var password: String?
+    private var credential: MailCredential?
     private var client: IMAPClient?
     private var boxes: [String: String] = ["inbox": "INBOX"]
     private var box = "inbox"
@@ -123,9 +123,9 @@ final class LettersProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, N
         build()
         if demo {
             loadDemo()
-        } else if let a = MailAccount.saved, let pw = MailKeychain.get(a.email) {
+        } else if let a = MailAccount.saved, let stored = MailKeychain.get(a.email) {
             account = a
-            password = pw
+            credential = .from(stored: stored)
             connect()
         } else {
             showSetup()
@@ -258,7 +258,13 @@ final class LettersProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, N
             return l
         }
         stack.addArrangedSubview(label("Letters", size: 26, weight: .semibold))
-        stack.addArrangedSubview(label("Your mail, one letter at a time. Connect your account once; the password is kept in the macOS Keychain.", dim: true))
+        stack.addArrangedSubview(label("Your mail, one letter at a time. Connect your account once; your sign-in is kept in the macOS Keychain.", dim: true))
+        if GoogleSignIn.clientID != nil {
+            let google = MonoButton("Sign in with Google", symbol: "person.crop.circle") { [weak self] _ in self?.signInWithGoogle() }
+            google.isOn = true
+            stack.addArrangedSubview(google)
+            stack.addArrangedSubview(label("Or use an app password:", size: 13, dim: true))
+        }
         let (nameBox, name) = monoField("Your name")
         let (emailBox, email) = monoField("Email address")
         let (pwBox, pw) = monoField("App password", secure: true)
@@ -268,7 +274,11 @@ final class LettersProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, N
             b.widthAnchor.constraint(equalToConstant: 420).isActive = true
             stack.addArrangedSubview(b)
         }
-        stack.addArrangedSubview(label("For Gmail: turn on 2-Step Verification, then create an app password at myaccount.google.com/apppasswords and paste it above. Other providers: use your mail password, or an app password if they offer one.", size: 13, dim: true))
+        stack.addArrangedSubview(label("For Gmail: turn on 2-Step Verification in your Google account, then create an app password (a 16-letter code) and paste it above. Other providers: use your mail password, or an app password if they offer one.", size: 13, dim: true))
+        stack.addArrangedSubview(MonoButton("Open Google\u{2019}s app password page", symbol: "arrow.up.right.square",
+                                            help: "Opens in your usual web browser, where you are already signed in to Google") { _ in
+            NSWorkspace.shared.open(URL(string: "https://myaccount.google.com/apppasswords")!)
+        })
         if let error { stack.addArrangedSubview(label(error, size: 13)) }
         let connect = MonoButton("Connect", symbol: "envelope") { [weak self] _ in
             self?.saveSetup(name: name.stringValue, email: email.stringValue, password: pw.stringValue)
@@ -313,24 +323,40 @@ final class LettersProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, N
         guard e.contains("@"), !pass.isEmpty else { showSetup(error: "Please fill in the address and the password."); return }
         let a = MailAccount.preset(name: name.trimmingCharacters(in: .whitespaces), email: e)
         account = a
-        password = pass
+        credential = .password(pass)
         connect(saving: true)
+    }
+
+    private func signInWithGoogle() {
+        status("Signing in with Google\u{2026}")
+        let name = setupFields?.0.stringValue ?? NSFullUserName()
+        Task { @MainActor in
+            do {
+                let t = try await GoogleSignIn(window: self.screen.window).signIn()
+                guard !t.email.isEmpty else { throw MailError.server("Google did not share the address.") }
+                self.account = MailAccount.preset(name: name, email: t.email)
+                self.credential = .google(t.refresh)
+                self.connect(saving: true)
+            } catch {
+                self.showSetup(error: MailCredential.explain(error, account: nil))
+            }
+        }
     }
 
     // MARK: Connecting and fetching
 
     private func connect(saving: Bool = false) {
-        guard let a = account, let pw = password else { showSetup(); return }
+        guard let a = account, let cred = credential else { showSetup(); return }
         status("Connecting to \(a.imapHost)\u{2026}")
         enqueue { [weak self] in
             guard let self else { return }
             do {
-                let c = try await IMAPClient.connect(a, password: pw)
+                let c = try await IMAPClient.connect(a, credential: cred)
                 self.client = c
                 self.boxes = (try? await c.specialMailboxes()) ?? ["inbox": "INBOX"]
                 if saving {
                     MailAccount.saved = a
-                    MailKeychain.set(pw, for: a.email)
+                    MailKeychain.set(cred.stored, for: a.email)
                 }
                 self.setupView?.removeFromSuperview()
                 self.setupView = nil
@@ -338,7 +364,7 @@ final class LettersProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, N
                 await self.fetch()
             } catch {
                 self.client = nil
-                self.showSetup(error: "Could not connect: \(error.localizedDescription)")
+                self.showSetup(error: MailCredential.explain(error, account: a))
             }
         }
     }
@@ -701,7 +727,9 @@ final class LettersProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, N
     }
 
     @objc func send(_ sender: Any?) {
-        guard let f = composerFields, let a = account, let pw = password ?? (demo ? "" : nil) else { return }
+        guard let f = composerFields, let a = account else { return }
+        if demo { closeComposer(); status("Demo mailbox: nothing was sent"); return }
+        guard let cred = credential else { return }
         let to = MailAddress.parseList(f.to.stringValue)
         guard !to.isEmpty, to.allSatisfy({ $0.email.contains("@") }) else { status("Please add who the letter is for."); return }
         let out = SMTP.Outgoing(to: to, cc: MailAddress.parseList(f.cc.stringValue), subject: f.subject.stringValue,
@@ -709,12 +737,12 @@ final class LettersProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, N
         status("Sending\u{2026}")
         Task { @MainActor in
             do {
-                try await SMTP.send(out, account: a, password: pw)
+                try await SMTP.send(out, account: a, credential: cred)
                 self.closeComposer()
                 self.screen.window?.makeFirstResponder(self.table)
                 self.status("Sent to \(to.map(\.display).joined(separator: ", "))")
             } catch {
-                self.status("Could not send: \(error.localizedDescription)")
+                self.status("Could not send: \(MailCredential.explain(error, account: a))")
             }
         }
     }
@@ -724,7 +752,7 @@ final class LettersProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, N
         MailAccount.saved = nil
         let c = client
         client = nil
-        password = nil
+        credential = nil
         messages = []
         table.reloadData()
         showEmpty()

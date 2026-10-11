@@ -30,7 +30,7 @@ final class Shell {
     static let commands = ["AI", "ASK", "BOOT", "CD", "CLS", "COLOR", "COPY", "DATE", "DEL", "DIR", "DOCS", "ECHO",
                            "EDIT", "EXIT", "FONT", "GO", "HELP", "LIBRARY", "MD", "MEM", "MORE", "MOVE", "NOTE",
                            "NOTES", "OPEN", "RD", "READ", "REN", "RSS", "SAVE", "SEARCH", "SUMMARIZE", "TIME",
-                           "TYPE", "VER", "VIEW", "WEB", "WIKI", "WINDOW", "FOLIO", "LETTERS", "BROWSE", "SHELF", "FILM", "PAD", "WRITE", "NEWS", "PROGRAMS", "CURSOR", "CHIME"]
+                           "TYPE", "VER", "VIEW", "WEB", "WIKI", "WINDOW", "FOCUS", "FOLIO", "LETTERS", "BROWSE", "SHELF", "FILM", "PAD", "WRITE", "NEWS", "PROGRAMS", "CURSOR", "CHIME"]
 
     static let logo = [
         "  \u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}",
@@ -383,6 +383,7 @@ final class Shell {
         case "FONT": font(rest)
         case "BOOT": boot(rest)
         case "CURSOR": cursor(rest)
+        case "FOCUS": await focus(rest)
         case "CHIME":
             switch rest.uppercased() {
             case "ON": Settings.shared.chime = true; Sound.chime(); console.writeLine("Start-up chime on.", .dim)
@@ -390,8 +391,14 @@ final class Shell {
             default: console.writeLine("CHIME is \(Settings.shared.chime ? "ON" : "OFF"). Type CHIME ON or CHIME OFF.")
             }
         case "ECHO": console.writeLine(rest.isEmpty ? "ECHO is on" : rest)
-        case "WINDOW", "FULLSCREEN": app.window.toggleFullScreen(nil)
-        case "EXIT", "QUIT": NSApp.terminate(nil)
+        case "WINDOW", "FULLSCREEN":
+            if FocusSession.shared.active { console.writeLine("Full screen stays on during a focus session.") } else { app.window.toggleFullScreen(nil) }
+        case "EXIT", "QUIT":
+            if FocusSession.shared.active {
+                console.writeLine("A focus session is running until \(FocusSession.shared.endsText). FOCUS END finishes it early.")
+            } else {
+                NSApp.terminate(nil)
+            }
         default:
             error("Unknown command. Type HELP for the list.")
         }
@@ -427,6 +434,7 @@ final class Shell {
         ("COMFORT", [
             ("COLOR [name]", "CALM and PAPER are the low-stimulation schemes"),
             ("FONT [name|size]", "Typeface and size (also \u{2318}+ and \u{2318}-)"),
+            ("FOCUS minutes", "Stay here: no switching apps until the time is up"),
             ("CURSOR STEADY|BLINK", "A steady cursor is the default"),
             ("BOOT ON|OFF", "Show or skip the start-up screen"),
             ("CHIME ON|OFF", "The start-up chime"),
@@ -536,6 +544,59 @@ final class Shell {
         for (c, d) in rows {
             console.write("   " + pad(c, 24))
             console.writeLine(d, .dim)
+        }
+    }
+
+    private func focus(_ rest: String) async {
+        let f = FocusSession.shared
+        let arg = rest.trimmingCharacters(in: .whitespaces).uppercased()
+        if arg == "SETUP" {
+            console.writeLine()
+            console.writeLine(" Silencing notifications during focus", .bright)
+            console.writeLine()
+            console.writeLine(" macOS does not let apps turn Focus on, but a Shortcut can, and Minimalia runs it for you.")
+            console.writeLine(" 1. Open the Shortcuts app and make a new shortcut named exactly: \(FocusSession.onShortcut)")
+            console.writeLine("    Give it one action, Set Focus, set to turn Do Not Disturb on.")
+            console.writeLine(" 2. Make a second shortcut named exactly: \(FocusSession.offShortcut)")
+            console.writeLine("    with Set Focus turning Do Not Disturb off.")
+            console.writeLine(" 3. That is all. Every FOCUS session will now start and end your Do Not Disturb.")
+            console.writeLine()
+            let ready = FocusSession.shortcutExists(FocusSession.onShortcut) && FocusSession.shortcutExists(FocusSession.offShortcut)
+            console.writeLine(ready ? " Both shortcuts are in place." : " The shortcuts are not there yet.", .dim)
+            console.writeLine(" Also useful: in System Settings, Focus, Do Not Disturb, add Minimalia under \u{201C}Turn on automatically\u{201D}, so Do Not Disturb starts whenever Minimalia opens.", .dim)
+            return
+        }
+        if arg == "END" || arg == "STOP" {
+            guard f.active else { console.writeLine("No focus session is running."); return }
+            console.writeLine("\(f.minutesLeft) \(f.minutesLeft == 1 ? "minute" : "minutes") left. Take a breath.")
+            let a = await console.readLine(prompt: "Type END to finish early, or press Return to keep going: ", history: false)
+            if a.trimmingCharacters(in: .whitespaces).uppercased() == "END" {
+                f.end()
+                app.allowQuitDuringFocus = true
+                console.writeLine("Focus session ended.", .dim)
+            } else {
+                console.writeLine("Carrying on until \(f.endsText).", .dim)
+            }
+            return
+        }
+        if arg.isEmpty {
+            if f.active {
+                console.writeLine("Focus session: \(f.minutesLeft) \(f.minutesLeft == 1 ? "minute" : "minutes") left, until \(f.endsText).")
+            } else {
+                console.writeLine("Type FOCUS and a number of minutes, e.g. FOCUS 45. FOCUS SETUP silences notifications too.")
+            }
+            return
+        }
+        guard let minutes = Int(arg), (5...240).contains(minutes) else {
+            error("Choose between 5 and 240 minutes, e.g. FOCUS 45.")
+            return
+        }
+        if f.active { console.writeLine("A session is already running until \(f.endsText).", .dim); return }
+        app.allowQuitDuringFocus = false
+        f.start(minutes: minutes)
+        console.writeLine("Focus for \(minutes) minutes, until \(f.endsText). Switching apps is off until then.")
+        if !FocusSession.shortcutExists(FocusSession.onShortcut) {
+            console.writeLine("Notifications can still arrive. FOCUS SETUP shows how to silence them.", .dim)
         }
     }
 

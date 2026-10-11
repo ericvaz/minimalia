@@ -18,6 +18,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var shell: Shell!
     var editor: (any DocumentController)?
     var reader: ReaderController?
+    /// Set by FOCUS END, so EXIT can quit afterwards.
+    var allowQuitDuringFocus = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let fonts = Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts") {
@@ -28,7 +30,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         consoleScreen = ScreenView(textView: console, top: false, bottom: false)
 
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
-        window = NSWindow(contentRect: screen.insetBy(dx: screen.width * 0.1, dy: screen.height * 0.08),
+        window = MinimaliaWindow(contentRect: screen.insetBy(dx: screen.width * 0.1, dy: screen.height * 0.08),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable],
                           backing: .buffered, defer: false)
         window.title = "Minimalia"
@@ -50,6 +52,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         shell = Shell(console: console, app: self)
+        FocusSession.shared.window = window
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { FocusSession.shared.resumeIfNeeded() }
         Task { await self.shell.start() }
         Autotype.runIfRequested(window: window)
     }
@@ -202,15 +206,22 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: Window and app
 
     func window(_ window: NSWindow, willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions = []) -> NSApplication.PresentationOptions {
-        [.fullScreen, .autoHideDock, .autoHideMenuBar, .autoHideToolbar]
+        FocusSession.shared.fullScreenOptions()
     }
 
-    func windowDidEnterFullScreen(_ notification: Notification) { Settings.shared.fullScreen = true }
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        Settings.shared.fullScreen = true
+        FocusSession.shared.applyOptions()
+    }
     func windowDidExitFullScreen(_ notification: Notification) { Settings.shared.fullScreen = false }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if FocusSession.shared.active && !allowQuitDuringFocus {
+            FocusSession.shared.remind()
+            return .terminateCancel
+        }
         guard let ed = editor, ed.dirty else { return .terminateNow }
         let alert = NSAlert()
         alert.messageText = "Save changes to \(ed.name)?"
