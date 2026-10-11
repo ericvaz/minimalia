@@ -18,6 +18,7 @@ Everything opens inside Minimalia and returns to the prompt with Esc.
 | `SHELF` | Minimalia Shelf | Project Gutenberg's free library, organised into shelves, read a page at a time like an e-reader |
 | `LETTERS` | Minimalia Letters | Your mail, one letter at a time, as calm text. Gmail and most other accounts |
 | `FILM` | Minimalia Film | The films on your Mac or an external drive, arranged like a quiet cinema and played in greyscale |
+| `GAMES` | Minimalia Games | BLOCKS (falling blocks, made for Minimalia), your own DOS games in DOSBox Staging, Mega Drive, SNES, NES and Game Boy games in RetroArch, and classic Macintosh through Infinite Mac |
 | `PAD` | Minimalia Pad | Formatted writing without leaving the prompt, keyboard only |
 | `EDIT` | Minimalia Edit | Plain text editor |
 | `AI` | Intelligence | Apple's on-device model. Nothing you type leaves the Mac |
@@ -57,6 +58,10 @@ macOS does not let apps turn on Do Not Disturb, but a Shortcut can. `FOCUS SETUP
 ## Letters and Gmail
 
 Letters connects with IMAP and SMTP. For Gmail, create an app password in your Google account (2-Step Verification needs to be on) and paste it into Letters once; it is kept in the macOS Keychain. Copies of Minimalia built with a Google OAuth client ID (set MinimaliaGoogleClientID in Resources/Info.plist) also offer Sign in with Google.
+
+## Games
+
+`GAMES` lists everything you can play. BLOCKS is built in. Your own DOS games and console game files go in Documents/Minimalia/GAMES (Add Games copies them there); DOS games run in [DOSBox Staging](https://www.dosbox-staging.org) and console games in [RetroArch](https://www.retroarch.com), both installed separately, for example with `brew install --cask dosbox-staging-app retroarch-metal`. Games are not included: add only games you have the right to play. Games wait until a focus session ends.
 
 ## Calm by design
 

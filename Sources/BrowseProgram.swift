@@ -90,7 +90,8 @@ final class BrowseProgram: NSObject, MinimaliaProgram, WKNavigationDelegate, WKU
     html { scroll-behavior: auto !important; }
     """
 
-    init(start: URL?) {
+    /// Games such as classic Mac software are shown in their own colours; everything else in greys.
+    init(start: URL?, greyscale: Bool = true) {
         self.start = start
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
@@ -99,7 +100,9 @@ final class BrowseProgram: NSObject, MinimaliaProgram, WKNavigationDelegate, WKU
         // Greyscale is set through the page's style object, which site security policies do not block.
         let js = "(function(){var h=document.documentElement;h.style.setProperty('filter','grayscale(1) brightness(0.94) contrast(0.96)','important');"
             + "try{var s=document.createElement('style');s.textContent=\(css)[0];(document.head||h).appendChild(s);}catch(e){}})();"
-        config.userContentController.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: false))
+        if greyscale {
+            config.userContentController.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: false))
+        }
         web = CalmWebView(frame: .zero, configuration: config)
         super.init()
         web.navigationDelegate = self
