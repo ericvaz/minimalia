@@ -233,7 +233,8 @@ final class FilmTile: NSView {
 
     override func mouseDown(with event: NSEvent) {
         onSelect?(self)
-        if event.clickCount >= 1 { onOpen?(self) }
+        // Only the first click opens the film; the second click of a double-click is ignored.
+        if event.clickCount == 1 { onOpen?(self) }
     }
 }
 
@@ -491,7 +492,12 @@ final class FilmProgram: NSObject, MinimaliaProgram {
 
     // MARK: Playing
 
+    /// True from the moment a film is chosen until it is closed, so it can only ever start once.
+    private var starting = false
+
     private func play(_ film: Film) {
+        guard !starting, player == nil else { return }
+        starting = true
         let asset = AVURLAsset(url: film.url)
         Task { @MainActor in
             let item = AVPlayerItem(asset: asset)
@@ -538,6 +544,7 @@ final class FilmProgram: NSObject, MinimaliaProgram {
         view.removeFromSuperview()
         player = nil
         playing = nil
+        starting = false
         let keep = wall.selected
         buildWall()
         wall.select(keep)
