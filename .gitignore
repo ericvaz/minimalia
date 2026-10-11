@@ -1,0 +1,5 @@
+build/
+*.app
+.DS_Store
+# The start-up chime is kept out until its licence is confirmed.
+Resources/Chime.mp3
