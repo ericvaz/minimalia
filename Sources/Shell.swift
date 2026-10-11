@@ -30,7 +30,7 @@ final class Shell {
     static let commands = ["AI", "ASK", "BOOT", "CD", "CLS", "COLOR", "COPY", "DATE", "DEL", "DIR", "DOCS", "ECHO",
                            "EDIT", "EXIT", "FONT", "GO", "HELP", "LIBRARY", "MD", "MEM", "MORE", "MOVE", "NOTE",
                            "NOTES", "OPEN", "RD", "READ", "REN", "RSS", "SAVE", "SEARCH", "SUMMARIZE", "TIME",
-                           "TYPE", "VER", "VIEW", "WEB", "WIKI", "WINDOW", "FOLIO", "BROWSE", "SHELF", "FILM", "PAD", "WRITE", "NEWS", "PROGRAMS", "CURSOR", "CHIME"]
+                           "TYPE", "VER", "VIEW", "WEB", "WIKI", "WINDOW", "FOLIO", "LETTERS", "BROWSE", "SHELF", "FILM", "PAD", "WRITE", "NEWS", "PROGRAMS", "CURSOR", "CHIME"]
 
     static let logo = [
         "  \u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}",
@@ -346,6 +346,7 @@ final class Shell {
         case "FOLIO", "WORD": await folio(rest)
         case "PROGRAMS", "APPS": programs()
         case "SHELF", "BOOKS": await shelf(rest)
+        case "LETTERS", "MAIL", "GMAIL": await app.run(LettersProgram())
         case "FILM", "FILMS", "MOVIES":
             let (path, _) = pathAndSwitches(rest)
             if !path.isEmpty {

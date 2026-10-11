@@ -52,3 +52,16 @@ cp Resources/Word-Info.plist "$WORD/Contents/Info.plist"
 cp Resources/WordIcon.icns "$WORD/Contents/Resources/WordIcon.icns"
 codesign --force --sign "$SIGN" "$WORD" >/dev/null
 echo "Built $WORD"
+
+# ./build.sh install also copies both apps to /Applications and keeps a Desktop alias to Minimalia.
+if [ "${1:-}" = "install" ]; then
+  for app in "$APP" "$WORD"; do
+    rm -rf "/Applications/$app"
+    ditto "$app" "/Applications/$app"
+  done
+  if [ ! -e "$HOME/Desktop/Minimalia" ]; then
+    osascript -e 'tell application "Finder" to make alias file to POSIX file "/Applications/Minimalia.app" at POSIX file "'"$HOME"'/Desktop"' \
+      -e 'tell application "Finder" to set name of result to "Minimalia"' >/dev/null
+  fi
+  echo "Installed in /Applications"
+fi
