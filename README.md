@@ -87,8 +87,14 @@ This compiles Sources/ into Minimalia.app and WordApp/ into Minimalia Folio.app,
 
 Text is set in Atkinson Hyperlegible Mono by the Braille Institute, under the SIL Open Font License (Resources/Fonts/OFL.txt). Books come from Project Gutenberg. The start-up chime is not included in this repository; add your own as Resources/Chime.mp3.
 
+## Contributing
+
+Pull requests are welcome. On your first one, a check will ask you to sign the Contributor Licence Agreement in CLA.md by posting a one-line comment. You keep the copyright in your work, and the agreement lets me keep Minimalia free while leaving room for other licences later.
+
 ## Licence
 
-Minimalia is free software under the GNU General Public License, version 3. See LICENSE.
+Minimalia is free software under the GNU General Public License, version 3. See LICENSE. If you would like to use it under different terms, for example in a closed-source product, open an issue and I am happy to talk about a separate licence.
+
+The name Minimalia and its logo are not covered by the GPL. See TRADEMARKS.md for how they may be used.
 
 Copyright 2026 Eric Vaz.
