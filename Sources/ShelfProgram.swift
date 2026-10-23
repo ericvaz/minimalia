@@ -266,7 +266,7 @@ final class BookReaderView: NSView {
     }
 
     /// Opens at a passage: the first place `start` appears after the heading `reference`.
-    func open(at passage: PaliCanon.Passage) {
+    func open(at passage: Passage) {
         let text = storage.string as NSString
         let head = text.range(of: passage.reference + "\n")
         let from = head.location == NSNotFound ? 0 : head.location
@@ -361,7 +361,7 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
     private var rows: [Book] = []
     private var section = "Reading now"
     private var initialQuery: String?
-    private var initialPassage: PaliCanon.Passage?
+    private var initialPassage: Passage?
 
     var onExit: (() -> Void)?
     var focusView: NSView { table }
@@ -401,7 +401,7 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         set { UserDefaults.standard.set(newValue, forKey: "shelfLanguage") }
     }
 
-    init(query: String?, passage: PaliCanon.Passage? = nil) {
+    init(query: String?, passage: Passage? = nil) {
         initialQuery = query
         initialPassage = passage
         super.init()
@@ -409,13 +409,13 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         Task { @MainActor in
             // A passage from FIND opens straight away; the library loads behind it.
             if let p = self.initialPassage {
-                self.all = PaliCanon.books
-                self.select(PaliCanon.shelf)
-                self.open(p.book, at: p)
+                self.all = Scripture.books
+                self.select(p.scripture)
+                self.openExcerpt(p)
             } else {
                 self.status("Opening the library\u{2026}")
             }
-            self.all = PaliCanon.books + (await Gutenberg.catalog())
+            self.all = Scripture.books + (await Gutenberg.catalog())
             let top = await Gutenberg.topIDs()
             for (i, id) in top.enumerated() { self.rank[id] = i }
             if self.initialPassage != nil {
@@ -510,9 +510,9 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         addHeading("Library")
         addSection("Most read")
         for (name, _) in Self.categories { addSection(name) }
-        if !PaliCanon.books.isEmpty {
+        if !Scripture.all.isEmpty {
             addHeading("Sacred texts")
-            addSection(PaliCanon.shelf)
+            for s in Scripture.all { addSection(s.shelf) }
         }
         let sideScroll = NSScrollView()
         sideScroll.documentView = sidebar
@@ -621,8 +621,8 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
             rows = ShelfStore.shared.reading.map(\.book)
         case "On this Mac":
             rows = ShelfStore.shared.onThisMac.map(\.book)
-        case PaliCanon.shelf:
-            rows = PaliCanon.books
+        case _ where Scripture.all.contains { $0.shelf == name }:
+            rows = Scripture.all.first { $0.shelf == name }?.books ?? []
         case "Most read":
             let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
             let top = rank.sorted { $0.value < $1.value }.compactMap { byID[$0.key] }
@@ -747,8 +747,8 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         open(rows[row])
     }
 
-    private func open(_ book: Book, at passage: PaliCanon.Passage? = nil) {
-        status(PaliCanon.contains(book.id) ? "Opening \u{201C}\(book.title)\u{201D}\u{2026}"
+    private func open(_ book: Book, at passage: Passage? = nil) {
+        status(Scripture.contains(book.id) ? "Opening \u{201C}\(book.title)\u{201D}\u{2026}"
                : "Fetching \u{201C}\(book.title)\u{201D} from Project Gutenberg\u{2026}")
         Task { @MainActor in
             do {
@@ -761,11 +761,22 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         }
     }
 
-    private func read(_ book: Book, text: String, at passage: PaliCanon.Passage? = nil) {
-        let position = ShelfStore.shared.entries[book.id]?.position ?? 0
+    /// A passage from FIND opens in its own sutta or chapter, which typesets at once even deep in a
+    /// large collection, and leaves the reader's place in the whole book as it was.
+    private func openExcerpt(_ p: Passage) {
+        guard let s = Scripture.all.first(where: { $0.shelf == p.scripture }), let text = s.excerpt(p) else {
+            open(p.book, at: p)
+            return
+        }
+        let b = Book(id: p.book.id, title: p.reference, author: p.book.title, language: p.book.language, shelves: [])
+        read(b, text: text, at: p, remember: false)
+    }
+
+    private func read(_ book: Book, text: String, at passage: Passage? = nil, remember: Bool = true) {
+        let position = remember ? ShelfStore.shared.entries[book.id]?.position ?? 0 : 0
         let r = BookReaderView(book: book, text: text, position: position)
         if let passage { r.open(at: passage) }
-        r.onPosition = { pos, len in ShelfStore.shared.setPosition(book.id, pos, length: len) }
+        if remember { r.onPosition = { pos, len in ShelfStore.shared.setPosition(book.id, pos, length: len) } }
         r.onExit = { [weak self] in self?.closeReader() }
         reader = r
         r.translatesAutoresizingMaskIntoConstraints = false

@@ -202,7 +202,7 @@ enum Gutenberg {
     static func download(_ book: Book) async throws -> String {
         let local = textFile(book.id)
         // Bundled books are read from the app. A copy in BOOKS keeps them on the shelf.
-        if let s = PaliCanon.text(of: book) {
+        if let s = Scripture.text(of: book) {
             if !FileManager.default.fileExists(atPath: local.path) { try? s.write(to: local, atomically: true, encoding: .utf8) }
             return s
         }
@@ -372,7 +372,7 @@ enum BookFormatter {
         headPara.paragraphSpacing = round(size * 1.2)
         headPara.lineHeightMultiple = 1.2
 
-        let canon = PaliCanon.contains(book.id)
+        let canon = Scripture.contains(book.id)
         let minorFont = fm.convert(body(size), toHaveTrait: .boldFontMask)
         let minorPara = NSMutableParagraphStyle()
         minorPara.alignment = .center

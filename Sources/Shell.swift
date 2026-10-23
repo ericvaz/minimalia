@@ -14,7 +14,7 @@ final class Shell {
     enum ListItem {
         case file(URL)
         case link(URL, String)
-        case passage(PaliCanon.Passage)
+        case passage(Passage)
     }
 
     let console: ConsoleTextView
@@ -371,7 +371,7 @@ final class Shell {
         case "PAD", "WP": await self.word(rest)
         case "NEWS": await news(rest)
         case "DOCS": await docs(rest)
-        case "FIND": find(rest)
+        case "FIND", "SEEK": await find(rest)
         case "NOTE": note(rest)
         case "NOTES": await openFile(Paths.notes, typewriter: false, atEnd: true)
         case "OPEN", "START": open(rest)
@@ -430,7 +430,7 @@ final class Shell {
             ("CD [path]", "Change folder. CD.. goes up, CD\\ goes home"),
             ("TYPE file", "Print a file: text, Word, RTF, ODT or PDF"),
             ("DOCS [word]", "Find your Word documents, newest first"),
-            ("FIND words", "Find passages in the Pali Canon; READ n opens one"),
+            ("FIND BUDDHISM words", "The passage that fits best; Return shows the next"),
             ("NOTE text", "Add a line to your notebook. NOTES opens it"),
             ("MD RD REN COPY MOVE", "The usual. Quote names that have spaces"),
             ("DEL file", "Move files to the Trash"),
@@ -1253,33 +1253,144 @@ final class Shell {
         console.writeLine(" READ n opens one.", .dim)
     }
 
-    // MARK: Pali Canon
+    // MARK: Scripture
 
-    /// Finds passages in the Pali Canon and lists them with their references. READ n opens one.
-    private func find(_ rest: String) {
-        let q = rest.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { error("Type FIND followed by words, such as FIND craving."); return }
-        guard !PaliCanon.books.isEmpty else { error("The Pali Canon is not in this copy of Minimalia."); return }
-        let hits = PaliCanon.search(q)
-        guard !hits.isEmpty else {
-            console.writeLine("No passages in the Pali Canon match \u{201C}\(q)\u{201D}.")
-            if !q.contains("*") { console.writeLine("End a word with * to find longer forms, such as attach*.", .dim) }
+    /// FIND BUDDHISM happiness: the passage that fits best, in full, then the next on Return.
+    /// It stays open like AI: new words search again, a leading + narrows, READ opens Shelf, EXIT returns.
+    private func find(_ rest: String) async {
+        let names = Scripture.all.map { $0.tradition }.joined(separator: ", ")
+        let (first, words) = splitCommand(rest.trimmingCharacters(in: .whitespaces))
+        guard let start = Scripture.named(first) else {
+            if Scripture.all.isEmpty { error("No sacred texts are in this copy of Minimalia."); return }
+            error(first.isEmpty ? "Name a tradition and a subject, such as FIND BUDDHISM happiness."
+                  : "\(first.uppercased()) is not in Minimalia yet. You can search: \(names).")
             return
         }
-        let shown = Array(hits.prefix(30))
-        lastList = shown.map { .passage($0) }
-        let width = max(40, min(console.columns, 110) - 8)
-        console.writeLine()
-        for (i, p) in shown.enumerated() {
-            console.writeLine(pad(String(i + 1), 4, right: true) + "  " + p.reference)
-            console.writeLine("      " + PaliCanon.snippet(p, for: q, width: width), .dim)
+        var scripture = start
+        var query = words.trimmingCharacters(in: .whitespaces)
+        var hits: [Passage] = []
+        var i = 0
+
+        func search() {
+            hits = scripture.search(query)
+            i = 0
+            lastList = hits.prefix(200).map { .passage($0) }
+            show()
         }
-        console.writeLine()
-        let n = NumberFormatter.localizedString(from: NSNumber(value: hits.count), number: .decimal)
-        if hits.count > shown.count {
-            console.writeLine(" \(n) passages in all; these are the first \(shown.count). Add words to narrow it down.", .dim)
+        func show() {
+            console.writeLine()
+            guard !hits.isEmpty else {
+                console.writeLine("Nothing in the \(scripture.shelf) matches \u{201C}\(query)\u{201D}.")
+                console.writeLine("Try other words, or end one with * to find longer forms, such as attach*.", .dim)
+                return
+            }
+            let p = hits[i]
+            console.writeLine(" " + p.reference, .bright)
+            console.writeLine(" " + p.book.title, .dim)
+            console.writeLine()
+            let width = max(40, min(console.columns, 96) - 6)
+            let lines = p.verse ? p.text.components(separatedBy: " / ") : wrap(p.text, width)
+            for l in lines {
+                console.write("   ")
+                var at = 0
+                let ns = l as NSString
+                for r in Scripture.matches(in: l, for: query) where r.location >= at {
+                    console.write(ns.substring(with: NSRange(location: at, length: r.location - at)))
+                    console.write(ns.substring(with: r), .bright)
+                    at = NSMaxRange(r)
+                }
+                console.writeLine(ns.substring(from: at))
+            }
+            console.writeLine()
+            let n = NumberFormatter.localizedString(from: NSNumber(value: hits.count), number: .decimal)
+            var note = " \(i + 1) of \(n)"
+            if p.repeats > 0 { note += ", also word for word in \(p.repeats) other place" + (p.repeats == 1 ? "" : "s") }
+            console.writeLine(note + ".   Return next, B back, READ opens it in Shelf, LIST all.", .dim)
         }
-        console.writeLine(" READ n opens a passage in Shelf. End a word with * to find longer forms, such as attach*.", .dim)
+        func list() {
+            guard !hits.isEmpty else { show(); return }
+            let width = max(40, min(console.columns, 110) - 8)
+            console.writeLine()
+            for (k, p) in hits.prefix(30).enumerated() {
+                console.writeLine(pad(String(k + 1), 4, right: true) + "  " + p.reference)
+                console.writeLine("      " + snippet(p.text, query, width), .dim)
+            }
+            console.writeLine()
+            if hits.count > 30 { console.writeLine(" The first 30 of \(hits.count). A number shows that passage.", .dim) }
+            else { console.writeLine(" A number shows that passage.", .dim) }
+        }
+
+        console.writeLine("Searching the \(scripture.shelf). Type new words to search again, + and words to narrow, EXIT to return.", .dim)
+        if query.isEmpty {
+            console.writeLine("What would you like to find?")
+        } else {
+            search()
+        }
+        while !Task.isCancelled {
+            console.writeLine()
+            let line = await console.readLine(prompt: "FIND> ").trimmingCharacters(in: .whitespaces)
+            if Task.isCancelled { return }
+            let (word, more) = splitCommand(line)
+            switch line.uppercased() {
+            case "EXIT", "QUIT", "BYE": return
+            case "CLS": console.clearScreen(); continue
+            case "LIST", "L": list(); continue
+            case "", "N", "NEXT":
+                if hits.isEmpty { continue }
+                if i + 1 < hits.count { i += 1; show() } else { console.writeLine("That was the last passage.", .dim) }
+                continue
+            case "B", "BACK", "P", "PREVIOUS":
+                if i > 0 { i -= 1; show() } else if !hits.isEmpty { console.writeLine("This is the first passage.", .dim) }
+                continue
+            case "R", "READ", "OPEN":
+                guard !hits.isEmpty else { continue }
+                await app.run(ShelfProgram(query: nil, passage: hits[i]))
+                console.writeLine("Back in FIND: \(hits[i].reference), \(i + 1) of \(hits.count).", .dim)
+                continue
+            default: break
+            }
+            if let n = Int(line) {
+                if n >= 1 && n <= hits.count { i = n - 1; show() } else { error("There is no passage \(n).") }
+            } else if word.uppercased() == "READ", let n = Int(more), n >= 1, n <= hits.count {
+                i = n - 1
+                await app.run(ShelfProgram(query: nil, passage: hits[i]))
+            } else if line.hasPrefix("+") {
+                query += " " + line.dropFirst().trimmingCharacters(in: .whitespaces)
+                search()
+            } else if let other = Scripture.named(word), !more.isEmpty {
+                scripture = other
+                query = more
+                search()
+            } else {
+                query = line
+                search()
+            }
+        }
+    }
+
+    /// Breaks a paragraph into lines of at most `width` characters.
+    private func wrap(_ text: String, _ width: Int) -> [String] {
+        var lines: [String] = []
+        var cur = ""
+        for w in text.split(separator: " ") {
+            if !cur.isEmpty && cur.count + 1 + w.count > width { lines.append(cur); cur = "" }
+            cur += (cur.isEmpty ? "" : " ") + w
+        }
+        if !cur.isEmpty { lines.append(cur) }
+        return lines
+    }
+
+    /// A stretch of the text around the first word searched for.
+    private func snippet(_ text: String, _ query: String, _ width: Int) -> String {
+        guard text.count > width else { return text }
+        let ns = text as NSString
+        var start = 0
+        if let r = Scripture.matches(in: text, for: query).first { start = max(0, r.location - width / 3) }
+        start = min(start, ns.length - width + 1)
+        var s = ns.substring(with: NSRange(location: start, length: width - 2))
+        if start > 0 { s = "\u{2026}" + s }
+        if start + width - 2 < ns.length { s += "\u{2026}" }
+        return s
     }
 
     // MARK: Intelligence
