@@ -268,7 +268,7 @@ final class BookReaderView: NSView {
     /// Opens at a passage: the first place `start` appears after the heading `reference`.
     func open(at passage: Passage) {
         let text = storage.string as NSString
-        let head = text.range(of: passage.reference + "\n")
+        let head = text.range(of: passage.heading + "\n")
         let from = head.location == NSNotFound ? 0 : head.location
         let r = text.range(of: passage.start, range: NSRange(location: from, length: text.length - from))
         if r.location != NSNotFound { anchor = r.location } else if head.location != NSNotFound { anchor = head.location }
@@ -768,8 +768,7 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
             open(p.book, at: p)
             return
         }
-        let b = Book(id: p.book.id, title: p.reference, author: p.book.title, language: p.book.language, shelves: [])
-        read(b, text: text, at: p, remember: false)
+        read(p.book, text: text, at: p, remember: false)
     }
 
     private func read(_ book: Book, text: String, at passage: Passage? = nil, remember: Bool = true) {

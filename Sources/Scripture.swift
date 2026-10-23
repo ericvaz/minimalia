@@ -5,20 +5,25 @@ import Foundation
 /// Each one lives in its own folder of Resources: an index.json listing the books (id, file, title,
 /// author, subjects) and one plain-text file per book. In the books, "# " starts a chapter, "## " a
 /// smaller heading, lines indented by two spaces are verse, and anything before the first heading is
-/// front matter that searches skip. Adding a tradition is a folder of books and a line in `all`.
+/// front matter that searches skip. In a scripture with numbered verses, a paragraph that starts with
+/// its number ("153. O ye who believe") under a heading such as "Surah 2  Al-Baqara (The Cow)" is
+/// found as "Qur'an 2:153". Adding a tradition is a folder of books and a line in `all`.
 final class Scripture {
     /// What FIND is followed by, such as "BUDDHISM", and other words that mean the same.
     let tradition: String
     let aliases: [String]
     /// The texts, as named in Shelf and in FIND's results, such as "Pali Canon".
     let shelf: String
+    /// For scriptures cited by chapter and verse, the name that starts a citation, such as "Qur'an".
+    let verseLabel: String?
     private let folder: String
 
-    init(tradition: String, aliases: [String] = [], shelf: String, folder: String) {
+    init(tradition: String, aliases: [String] = [], shelf: String, folder: String, verseLabel: String? = nil) {
         self.tradition = tradition
         self.aliases = aliases
         self.shelf = shelf
         self.folder = folder
+        self.verseLabel = verseLabel
     }
 
     private struct Entry: Decodable {
@@ -51,6 +56,9 @@ final class Scripture {
 
     private struct Paragraph {
         let book: Int
+        /// The heading it sits under, as written in the book.
+        let heading: String
+        /// How FIND names it: the heading, or a citation such as "Qur'an 2:153  Al-Baqara (The Cow)".
         let reference: String
         let foldedReference: String
         let text: String
@@ -85,7 +93,13 @@ final class Scripture {
                 guard !reference.isEmpty else { continue }
                 let verse = p.hasPrefix("  ")
                 let joined = lines.joined(separator: verse ? " / " : " ")
-                out.append(Paragraph(book: i, reference: reference, foldedReference: Self.fold(reference), text: joined,
+                var cited = reference
+                if let label = verseLabel,
+                   let n = first.range(of: "^[0-9]+(?=\\. )", options: .regularExpression),
+                   let c = reference.range(of: "(?<=^[A-Za-z]{1,12} )[0-9]+(?=  )", options: .regularExpression) {
+                    cited = "\(label) \(reference[c]):\(first[n])  " + reference[c.upperBound...].trimmingCharacters(in: .whitespaces)
+                }
+                out.append(Paragraph(book: i, heading: reference, reference: cited, foldedReference: Self.fold(reference), text: joined,
                                      verse: verse, folded: Self.fold(joined), words: joined.split(separator: " ").count,
                                      start: String(first.prefix(60))))
             }
@@ -135,7 +149,8 @@ final class Scripture {
             let p = paragraphs[i]
             if let k = seen[p.folded] { out[k].repeats += 1; continue }
             seen[p.folded] = out.count
-            out.append(Passage(scripture: shelf, book: books[p.book], reference: p.reference, text: p.text, verse: p.verse, start: p.start))
+            out.append(Passage(scripture: shelf, book: books[p.book], heading: p.heading, reference: p.reference,
+                               text: p.text, verse: p.verse, start: p.start))
         }
         return out
     }
@@ -150,12 +165,12 @@ final class Scripture {
         guard front.location != NSNotFound else { return nil }
         var start: Int
         var stops: [String]
-        let minor = ns.range(of: "\n\n## " + p.reference + "\n", range: all)
+        let minor = ns.range(of: "\n\n## " + p.heading + "\n", range: all)
         if minor.location != NSNotFound {
             start = minor.location + 2
             stops = ["\n\n## ", "\n\n# "]
         } else {
-            let line = ns.range(of: p.reference + "\n\n", range: all)
+            let line = ns.range(of: p.heading + "\n\n", range: all)
             guard line.location != NSNotFound else { return nil }
             let head = ns.range(of: "\n\n# ", options: .backwards, range: NSRange(location: 0, length: line.location))
             start = head.location == NSNotFound ? line.location : head.location + 2
@@ -224,8 +239,11 @@ final class Scripture {
 
     // MARK: Traditions
 
-    /// Every tradition in Minimalia. Islam and Christianity follow the same pattern.
-    static let all: [Scripture] = [PaliCanon.scripture].filter { !$0.books.isEmpty }
+    /// Every tradition in Minimalia, each a folder in Resources built by a tool in Tools.
+    static let all: [Scripture] = [
+        PaliCanon.scripture,
+        Scripture(tradition: "ISLAM", aliases: ["MUSLIM", "QURAN", "KORAN"], shelf: "Qur'an", folder: "Quran", verseLabel: "Qur'an"),
+    ].filter { !$0.books.isEmpty }
 
     static func named(_ word: String) -> Scripture? {
         let w = word.uppercased()
@@ -248,7 +266,9 @@ struct Passage {
     /// The shelf it comes from, such as "Pali Canon".
     let scripture: String
     let book: Book
-    /// The text or chapter, such as "MN 1  The Root of All Things".
+    /// The heading it sits under in the book, which the reader looks for.
+    let heading: String
+    /// How it is named, such as "MN 1  The Root of All Things" or "Qur'an 2:153  Al-Baqara (The Cow)".
     let reference: String
     /// The paragraph, with verse lines joined by slashes.
     let text: String

@@ -430,7 +430,7 @@ final class Shell {
             ("CD [path]", "Change folder. CD.. goes up, CD\\ goes home"),
             ("TYPE file", "Print a file: text, Word, RTF, ODT or PDF"),
             ("DOCS [word]", "Find your Word documents, newest first"),
-            ("FIND BUDDHISM words", "The passage that fits best; Return shows the next"),
+            ("FIND religion words", "BUDDHISM or ISLAM: the best passage first, Return for more"),
             ("NOTE text", "Add a line to your notebook. NOTES opens it"),
             ("MD RD REN COPY MOVE", "The usual. Quote names that have spaces"),
             ("DEL file", "Move files to the Trash"),

@@ -80,11 +80,14 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 [ -f Resources/Chime.mp3 ] && cp Resources/Chime.mp3 "$APP/Contents/Resources/Chime.mp3"
 cp -R Resources/Fonts "$APP/Contents/Resources/Fonts"
-# The Pali Canon, kept compressed in the repository and unpacked into the app.
-mkdir -p "$APP/Contents/Resources/Canon"
-cp Resources/Canon/index.json "$APP/Contents/Resources/Canon/index.json"
-for gz in Resources/Canon/*.txt.gz; do
-  gzip -dc "$gz" > "$APP/Contents/Resources/Canon/$(basename "$gz" .gz)"
+# Sacred texts (the Pali Canon, the Qur'an), kept compressed in the repository and unpacked into the app.
+for dir in Resources/Canon Resources/Quran; do
+  name=$(basename "$dir")
+  mkdir -p "$APP/Contents/Resources/$name"
+  cp "$dir/index.json" "$APP/Contents/Resources/$name/index.json"
+  for gz in "$dir"/*.txt.gz; do
+    gzip -dc "$gz" > "$APP/Contents/Resources/$name/$(basename "$gz" .gz)"
+  done
 done
 xcrun actool Resources/Assets.xcassets --compile "$APP/Contents/Resources" --platform macosx \
   --minimum-deployment-target 26.0 --output-partial-info-plist build/assets-info.plist >/dev/null
