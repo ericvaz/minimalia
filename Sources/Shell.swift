@@ -1250,15 +1250,20 @@ final class Shell {
 
     private func ai(_ rest: String) async {
         if let reason = AIEngine.shared.unavailableReason { error(reason); return }
-        if !rest.isEmpty {
-            await AIEngine.shared.respond(rest, to: console)
-            return
-        }
         console.writeLine("Local intelligence ready. Nothing you type here leaves this Mac.", .dim)
         console.writeLine("Type EXIT to return to the prompt, NEW to start a fresh conversation.", .dim)
+        // AI with words starts the conversation with them; either way it stays open until EXIT.
+        var first: String? = rest.isEmpty ? nil : rest
         while !Task.isCancelled {
             console.writeLine()
-            let q = await console.readLine(prompt: "AI> ").trimmingCharacters(in: .whitespaces)
+            let q: String
+            if let f = first {
+                console.writeLine("AI> " + f)
+                q = f
+                first = nil
+            } else {
+                q = await console.readLine(prompt: "AI> ").trimmingCharacters(in: .whitespaces)
+            }
             if Task.isCancelled { return }
             switch q.uppercased() {
             case "EXIT", "QUIT", "BYE": return

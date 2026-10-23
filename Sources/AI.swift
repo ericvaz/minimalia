@@ -10,7 +10,8 @@ final class AIEngine {
     private let instructions = """
     You are the assistant built into Minimalia, a quiet text-only computer in the style of the 1980s. \
     Answer in plain text only: no Markdown, no asterisks, no headings, no tables, no emoji. \
-    Be brief and direct, in short paragraphs. Use numbered lines only when giving steps.
+    This is a conversation: reply the way a thoughtful person would, in plain sentences and short paragraphs, \
+    and build on what was said earlier. Be brief and direct. Write a list only when the person asks for steps or a list.
     """
 
     var unavailableReason: String? {

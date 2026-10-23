@@ -66,8 +66,9 @@ enum ProgramRegistry {
               keys: ["Space next, B back, a link number and Return follows it.",
                      "S saves to the library, R reads aloud, Esc returns."]),
         Entry(command: "AI", name: "Intelligence", summary: "On-device assistant; nothing leaves this Mac",
-              usage: [("AI [question]", "On-device assistant; EXIT returns")],
-              keys: ["NEW starts a fresh conversation, EXIT returns to the prompt."]),
+              usage: [("AI [question]", "Chat with the on-device assistant until EXIT")],
+              keys: ["AI opens a conversation; AI followed by a question starts it with that question.",
+                     "NEW starts a fresh conversation, EXIT returns to the prompt."]),
     ]
 
     /// Mail, films and games, left out of the release edition. ./build.sh full puts them back.
