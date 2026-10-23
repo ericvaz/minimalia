@@ -40,6 +40,7 @@ Everything opens inside Minimalia and returns to the prompt with Esc.
     WEB 15-minute city      search Google
     NEWS CBC                today's headlines from a quiet news site
     SHELF neolithic         find free books on a subject
+    FIND craving            passages in the Pali Canon; READ 3 opens one
     FILM /Volumes/Films     also look for films on an external drive
     FOCUS 45                stay here for 45 minutes: no switching apps until the time is up
     NOTE call the press     add a line to your notebook

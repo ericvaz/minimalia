@@ -265,6 +265,15 @@ final class BookReaderView: NSView {
         show()
     }
 
+    /// Opens at a passage: the first place `start` appears after the heading `reference`.
+    func open(at passage: PaliCanon.Passage) {
+        let text = storage.string as NSString
+        let head = text.range(of: passage.reference + "\n")
+        let from = head.location == NSNotFound ? 0 : head.location
+        let r = text.range(of: passage.start, range: NSRange(location: from, length: text.length - from))
+        if r.location != NSNotFound { anchor = r.location } else if head.location != NSNotFound { anchor = head.location }
+    }
+
     func go(toChar c: Int) {
         first = page(forChar: c)
         if spread && first % 2 == 1 { first -= 1 }
@@ -352,6 +361,7 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
     private var rows: [Book] = []
     private var section = "Reading now"
     private var initialQuery: String?
+    private var initialPassage: PaliCanon.Passage?
 
     var onExit: (() -> Void)?
     var focusView: NSView { table }
@@ -391,16 +401,26 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         set { UserDefaults.standard.set(newValue, forKey: "shelfLanguage") }
     }
 
-    init(query: String?) {
+    init(query: String?, passage: PaliCanon.Passage? = nil) {
         initialQuery = query
+        initialPassage = passage
         super.init()
         build()
         Task { @MainActor in
-            self.status("Opening the library\u{2026}")
+            // A passage from FIND opens straight away; the library loads behind it.
+            if let p = self.initialPassage {
+                self.all = PaliCanon.books
+                self.select(PaliCanon.shelf)
+                self.open(p.book, at: p)
+            } else {
+                self.status("Opening the library\u{2026}")
+            }
             self.all = PaliCanon.books + (await Gutenberg.catalog())
             let top = await Gutenberg.topIDs()
             for (i, id) in top.enumerated() { self.rank[id] = i }
-            if let q = self.initialQuery, !q.isEmpty {
+            if self.initialPassage != nil {
+                return
+            } else if let q = self.initialQuery, !q.isEmpty {
                 self.search.stringValue = q
                 self.runSearch(q)
             } else {
@@ -727,23 +747,24 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         open(rows[row])
     }
 
-    private func open(_ book: Book) {
+    private func open(_ book: Book, at passage: PaliCanon.Passage? = nil) {
         status(PaliCanon.contains(book.id) ? "Opening \u{201C}\(book.title)\u{201D}\u{2026}"
                : "Fetching \u{201C}\(book.title)\u{201D} from Project Gutenberg\u{2026}")
         Task { @MainActor in
             do {
                 let text = try await Gutenberg.download(book)
                 ShelfStore.shared.add(book, length: text.utf16.count)
-                self.read(book, text: text)
+                self.read(book, text: text, at: passage)
             } catch {
                 self.status("Unable to fetch the book: \(Web.describe(error))")
             }
         }
     }
 
-    private func read(_ book: Book, text: String) {
+    private func read(_ book: Book, text: String, at passage: PaliCanon.Passage? = nil) {
         let position = ShelfStore.shared.entries[book.id]?.position ?? 0
         let r = BookReaderView(book: book, text: text, position: position)
+        if let passage { r.open(at: passage) }
         r.onPosition = { pos, len in ShelfStore.shared.setPosition(book.id, pos, length: len) }
         r.onExit = { [weak self] in self?.closeReader() }
         reader = r

@@ -14,6 +14,7 @@ final class Shell {
     enum ListItem {
         case file(URL)
         case link(URL, String)
+        case passage(PaliCanon.Passage)
     }
 
     let console: ConsoleTextView
@@ -28,7 +29,7 @@ final class Shell {
     private var bootSkip = false
 
     static let commands = ["AI", "ASK", "BOOT", "CD", "CLS", "COLOR", "COPY", "DATE", "DEL", "DIR", "DOCS", "ECHO",
-                           "EDIT", "EXIT", "FONT", "GO", "HELP", "LIBRARY", "MD", "MEM", "MORE", "MOVE", "NOTE",
+                           "EDIT", "EXIT", "FIND", "FONT", "GO", "HELP", "LIBRARY", "MD", "MEM", "MORE", "MOVE", "NOTE",
                            "NOTES", "OPEN", "RD", "READ", "REN", "RSS", "SAVE", "SEARCH", "SUMMARIZE", "TIME",
                            "TYPE", "VER", "VIEW", "WEB", "WIKI", "WINDOW", "FOCUS", "FOLIO", "BROWSE", "SHELF", "PAD", "WRITE", "NEWS", "PROGRAMS", "CURSOR", "CHIME"]
                            + extraCommands
@@ -370,6 +371,7 @@ final class Shell {
         case "PAD", "WP": await self.word(rest)
         case "NEWS": await news(rest)
         case "DOCS": await docs(rest)
+        case "FIND": find(rest)
         case "NOTE": note(rest)
         case "NOTES": await openFile(Paths.notes, typewriter: false, atEnd: true)
         case "OPEN", "START": open(rest)
@@ -428,6 +430,7 @@ final class Shell {
             ("CD [path]", "Change folder. CD.. goes up, CD\\ goes home"),
             ("TYPE file", "Print a file: text, Word, RTF, ODT or PDF"),
             ("DOCS [word]", "Find your Word documents, newest first"),
+            ("FIND words", "Find passages in the Pali Canon; READ n opens one"),
             ("NOTE text", "Add a line to your notebook. NOTES opens it"),
             ("MD RD REN COPY MOVE", "The usual. Quote names that have spaces"),
             ("DEL file", "Move files to the Trash"),
@@ -1134,6 +1137,8 @@ final class Shell {
             NSWorkspace.shared.open(u)
         case .file(let u)?:
             NSWorkspace.shared.open(u)
+        case .passage?:
+            error("READ \(path) opens that passage in Shelf.")
         case nil:
             let u = resolve(path)
             guard exists(u) else { error("File not found"); return }
@@ -1188,6 +1193,8 @@ final class Shell {
             await openWeb(u)
         case .file(let u)?:
             await view(u.path)
+        case .passage(let p)?:
+            await app.run(ShelfProgram(query: nil, passage: p))
         case nil:
             if let u = Web.address(arg), Int(arg) == nil {
                 await openWeb(u)
@@ -1244,6 +1251,35 @@ final class Shell {
         }
         console.writeLine()
         console.writeLine(" READ n opens one.", .dim)
+    }
+
+    // MARK: Pali Canon
+
+    /// Finds passages in the Pali Canon and lists them with their references. READ n opens one.
+    private func find(_ rest: String) {
+        let q = rest.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { error("Type FIND followed by words, such as FIND craving."); return }
+        guard !PaliCanon.books.isEmpty else { error("The Pali Canon is not in this copy of Minimalia."); return }
+        let hits = PaliCanon.search(q)
+        guard !hits.isEmpty else {
+            console.writeLine("No passages in the Pali Canon match \u{201C}\(q)\u{201D}.")
+            if !q.contains("*") { console.writeLine("End a word with * to find longer forms, such as attach*.", .dim) }
+            return
+        }
+        let shown = Array(hits.prefix(30))
+        lastList = shown.map { .passage($0) }
+        let width = max(40, min(console.columns, 110) - 8)
+        console.writeLine()
+        for (i, p) in shown.enumerated() {
+            console.writeLine(pad(String(i + 1), 4, right: true) + "  " + p.reference)
+            console.writeLine("      " + PaliCanon.snippet(p, for: q, width: width), .dim)
+        }
+        console.writeLine()
+        let n = NumberFormatter.localizedString(from: NSNumber(value: hits.count), number: .decimal)
+        if hits.count > shown.count {
+            console.writeLine(" \(n) passages in all; these are the first \(shown.count). Add words to narrow it down.", .dim)
+        }
+        console.writeLine(" READ n opens a passage in Shelf. End a word with * to find longer forms, such as attach*.", .dim)
     }
 
     // MARK: Intelligence
