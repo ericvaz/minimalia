@@ -32,7 +32,7 @@
 	<string>© 2026 Eric Vaz</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
 		<true/>
 	</dict>
 	<key>NSDesktopFolderUsageDescription</key>

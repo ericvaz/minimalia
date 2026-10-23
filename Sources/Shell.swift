@@ -30,7 +30,14 @@ final class Shell {
     static let commands = ["AI", "ASK", "BOOT", "CD", "CLS", "COLOR", "COPY", "DATE", "DEL", "DIR", "DOCS", "ECHO",
                            "EDIT", "EXIT", "FONT", "GO", "HELP", "LIBRARY", "MD", "MEM", "MORE", "MOVE", "NOTE",
                            "NOTES", "OPEN", "RD", "READ", "REN", "RSS", "SAVE", "SEARCH", "SUMMARIZE", "TIME",
-                           "TYPE", "VER", "VIEW", "WEB", "WIKI", "WINDOW", "GAMES", "BLOCKS", "FOCUS", "FOLIO", "LETTERS", "BROWSE", "SHELF", "FILM", "PAD", "WRITE", "NEWS", "PROGRAMS", "CURSOR", "CHIME"]
+                           "TYPE", "VER", "VIEW", "WEB", "WIKI", "WINDOW", "FOCUS", "FOLIO", "BROWSE", "SHELF", "PAD", "WRITE", "NEWS", "PROGRAMS", "CURSOR", "CHIME"]
+                           + extraCommands
+
+    #if MINIMALIA_EXTRAS
+    static let extraCommands = ["GAMES", "BLOCKS", "LETTERS", "FILM"]
+    #else
+    static let extraCommands: [String] = []
+    #endif
 
     static let logo = [
         "  \u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}",
@@ -346,6 +353,7 @@ final class Shell {
         case "FOLIO", "WORD": await folio(rest)
         case "PROGRAMS", "APPS": programs()
         case "SHELF", "BOOKS": await shelf(rest)
+        #if MINIMALIA_EXTRAS
         case "GAMES", "PLAY": await app.run(GamesProgram())
         case "BLOCKS": await app.run(BlocksProgram())
         case "LETTERS", "MAIL", "GMAIL": await app.run(LettersProgram())
@@ -358,6 +366,7 @@ final class Shell {
                 console.writeLine("Film will also look in \(mPath(u)).", .dim)
             }
             await app.run(FilmProgram(home: home))
+        #endif
         case "PAD", "WP": await self.word(rest)
         case "NEWS": await news(rest)
         case "DOCS": await docs(rest)

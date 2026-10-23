@@ -87,6 +87,8 @@ enum Web {
             case .notConnectedToInternet: return "No connection to the Internet."
             case .timedOut: return "The server took too long to answer."
             case .cannotFindHost: return "That address could not be found."
+            case .appTransportSecurityRequiresSecureConnection:
+                return "That site has no secure connection, so it can only be opened in BROWSE."
             default: return e.localizedDescription
             }
         }

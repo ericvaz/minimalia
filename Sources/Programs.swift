@@ -26,7 +26,9 @@ enum ProgramRegistry {
         let keys: [String]
     }
 
-    static let installed: [Entry] = [
+    static let installed: [Entry] = core + extras
+
+    private static let core: [Entry] = [
         Entry(command: "WRITE", name: "Write", summary: "One page a day, cursor held in the middle",
               usage: [("WRITE", "Today's page, cursor held in the middle")],
               keys: ["Ctrl+S saves, Esc returns to the prompt."]),
@@ -52,6 +54,25 @@ enum ProgramRegistry {
                      "\u{2318}[ back, \u{2318}] forward, \u{2318}R reload, \u{2318}= and \u{2318}- size.",
                      "Text, or \u{2318}T, shows the page as plain text; S saves it to the library.",
                      "Esc returns to the prompt."]),
+        Entry(command: "PAD", name: "Minimalia Pad", summary: "Formatted writing in the prompt's colours, keyboard only",
+              usage: [("PAD file", "Bold, italic and headings, keyboard only")],
+              keys: ["Ctrl+B bold, Ctrl+I italic, Ctrl+U underline, Ctrl+1 to 3 headings, Ctrl+0 text.",
+                     "Ctrl+E centre, Ctrl+8 bullets, Ctrl+P print, Ctrl+S save, Esc returns."]),
+        Entry(command: "EDIT", name: "Minimalia Edit", summary: "Plain full-screen text editor",
+              usage: [("EDIT file", "Plain text editor; Word files as plain text")],
+              keys: ["Ctrl+S saves, \u{2318}F finds, Esc returns to the prompt."]),
+        Entry(command: "VIEW", name: "Reader", summary: "Read files and web pages a screen at a time",
+              usage: [("VIEW file", "Read a file one screen at a time")],
+              keys: ["Space next, B back, a link number and Return follows it.",
+                     "S saves to the library, R reads aloud, Esc returns."]),
+        Entry(command: "AI", name: "Intelligence", summary: "On-device assistant; nothing leaves this Mac",
+              usage: [("AI [question]", "On-device assistant; EXIT returns")],
+              keys: ["NEW starts a fresh conversation, EXIT returns to the prompt."]),
+    ]
+
+    /// Mail, films and games, left out of the release edition. ./build.sh full puts them back.
+    #if MINIMALIA_EXTRAS
+    private static let extras: [Entry] = [
         Entry(command: "LETTERS", name: "Minimalia Letters", summary: "Your mail, one letter at a time: Gmail and most other accounts",
               usage: [("LETTERS", "Your mail, one letter at a time")],
               keys: ["c write, r reply, a reply all, f forward, e archive, s star, j and k move.",
@@ -72,21 +93,10 @@ enum ProgramRegistry {
                      "DOS games run in DOSBox Staging; Mega Drive, SNES, NES and Game Boy in RetroArch.",
                      "Quit the game to come back. Games wait until a focus session ends.",
                      "BLOCKS: \u{2190} \u{2192} move, \u{2191} turn, \u{2193} faster, Space drops, P pauses."]),
-        Entry(command: "PAD", name: "Minimalia Pad", summary: "Formatted writing in the prompt's colours, keyboard only",
-              usage: [("PAD file", "Bold, italic and headings, keyboard only")],
-              keys: ["Ctrl+B bold, Ctrl+I italic, Ctrl+U underline, Ctrl+1 to 3 headings, Ctrl+0 text.",
-                     "Ctrl+E centre, Ctrl+8 bullets, Ctrl+P print, Ctrl+S save, Esc returns."]),
-        Entry(command: "EDIT", name: "Minimalia Edit", summary: "Plain full-screen text editor",
-              usage: [("EDIT file", "Plain text editor; Word files as plain text")],
-              keys: ["Ctrl+S saves, \u{2318}F finds, Esc returns to the prompt."]),
-        Entry(command: "VIEW", name: "Reader", summary: "Read files and web pages a screen at a time",
-              usage: [("VIEW file", "Read a file one screen at a time")],
-              keys: ["Space next, B back, a link number and Return follows it.",
-                     "S saves to the library, R reads aloud, Esc returns."]),
-        Entry(command: "AI", name: "Intelligence", summary: "On-device assistant; nothing leaves this Mac",
-              usage: [("AI [question]", "On-device assistant; EXIT returns")],
-              keys: ["NEW starts a fresh conversation, EXIT returns to the prompt."]),
     ]
+    #else
+    private static let extras: [Entry] = []
+    #endif
 }
 
 extension AppController {
