@@ -372,6 +372,7 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         ("Biographies", ["Biographies"]),
         ("History", ["History - "]),
         ("Philosophy", ["Philosophy & Ethics"]),
+        ("Religion and spirituality", ["Religion/Spirituality"]),
         ("Essays and letters", ["Essays, Letters & Speeches"]),
         ("Travel", ["Travel Writing"]),
         ("Myths and folklore", ["Mythology, Legends & Folklore"]),
@@ -396,7 +397,7 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         build()
         Task { @MainActor in
             self.status("Opening the library\u{2026}")
-            self.all = await Gutenberg.catalog()
+            self.all = PaliCanon.books + (await Gutenberg.catalog())
             let top = await Gutenberg.topIDs()
             for (i, id) in top.enumerated() { self.rank[id] = i }
             if let q = self.initialQuery, !q.isEmpty {
@@ -489,6 +490,10 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
         addHeading("Library")
         addSection("Most read")
         for (name, _) in Self.categories { addSection(name) }
+        if !PaliCanon.books.isEmpty {
+            addHeading("Sacred texts")
+            addSection(PaliCanon.shelf)
+        }
         let sideScroll = NSScrollView()
         sideScroll.documentView = sidebar
         sideScroll.drawsBackground = false
@@ -596,6 +601,8 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
             rows = ShelfStore.shared.reading.map(\.book)
         case "On this Mac":
             rows = ShelfStore.shared.onThisMac.map(\.book)
+        case PaliCanon.shelf:
+            rows = PaliCanon.books
         case "Most read":
             let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
             let top = rank.sorted { $0.value < $1.value }.compactMap { byID[$0.key] }
@@ -721,7 +728,8 @@ final class ShelfProgram: NSObject, MinimaliaProgram, NSTableViewDataSource, NST
     }
 
     private func open(_ book: Book) {
-        status("Fetching \u{201C}\(book.title)\u{201D} from Project Gutenberg\u{2026}")
+        status(PaliCanon.contains(book.id) ? "Opening \u{201C}\(book.title)\u{201D}\u{2026}"
+               : "Fetching \u{201C}\(book.title)\u{201D} from Project Gutenberg\u{2026}")
         Task { @MainActor in
             do {
                 let text = try await Gutenberg.download(book)

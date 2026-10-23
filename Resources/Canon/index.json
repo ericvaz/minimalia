@@ -1,0 +1,114 @@
+[
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "dn",
+    "id" : 1000001,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Dīgha Nikāya; Long Discourses",
+    "title" : "Long Discourses (Dīgha Nikāya)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "mn",
+    "id" : 1000002,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Majjhima Nikāya; Middle Discourses",
+    "title" : "Middle Discourses (Majjhima Nikāya)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "sn1",
+    "id" : 1000003,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Saṁyutta Nikāya; Linked Discourses 1: With Verses",
+    "title" : "Linked Discourses 1: With Verses (Saṁyutta Nikāya)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "sn2",
+    "id" : 1000004,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Saṁyutta Nikāya; Linked Discourses 2: On Causation",
+    "title" : "Linked Discourses 2: On Causation (Saṁyutta Nikāya)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "sn3",
+    "id" : 1000005,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Saṁyutta Nikāya; Linked Discourses 3: On the Aggregates",
+    "title" : "Linked Discourses 3: On the Aggregates (Saṁyutta Nikāya)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "sn4",
+    "id" : 1000006,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Saṁyutta Nikāya; Linked Discourses 4: On the Six Sense Fields",
+    "title" : "Linked Discourses 4: On the Six Sense Fields (Saṁyutta Nikāya)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "sn5",
+    "id" : 1000007,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Saṁyutta Nikāya; Linked Discourses 5: On the Path",
+    "title" : "Linked Discourses 5: On the Path (Saṁyutta Nikāya)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "an",
+    "id" : 1000008,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Aṅguttara Nikāya; Numbered Discourses",
+    "title" : "Numbered Discourses (Aṅguttara Nikāya)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "kp",
+    "id" : 1000009,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Khuddakapāṭha; Basic Passages",
+    "title" : "Basic Passages (Khuddakapāṭha)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "dhp",
+    "id" : 1000010,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Dhammapada; Sayings of the Dhamma",
+    "title" : "Sayings of the Dhamma (Dhammapada)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "ud",
+    "id" : 1000011,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Udāna; Heartfelt Sayings",
+    "title" : "Heartfelt Sayings (Udāna)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "iti",
+    "id" : 1000012,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Itivuttaka; So It Was Said",
+    "title" : "So It Was Said (Itivuttaka)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "snp",
+    "id" : 1000013,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Sutta Nipāta; Anthology of Discourses",
+    "title" : "Anthology of Discourses (Sutta Nipāta)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "thag",
+    "id" : 1000014,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Theragāthā; Verses of the Senior Monks",
+    "title" : "Verses of the Senior Monks (Theragāthā)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "thig",
+    "id" : 1000015,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Therīgāthā; Verses of the Senior Nuns",
+    "title" : "Verses of the Senior Nuns (Therīgāthā)"
+  },
+  {
+    "author" : "Bhikkhu Sujato",
+    "file" : "cp",
+    "id" : 1000016,
+    "subjects" : "Buddhism; Pali Canon; Tipiṭaka; Sutta Piṭaka; Cariyāpiṭaka; Canon of Conduct",
+    "title" : "Canon of Conduct (Cariyāpiṭaka)"
+  }
+]

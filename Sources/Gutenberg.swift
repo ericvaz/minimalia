@@ -201,6 +201,11 @@ enum Gutenberg {
 
     static func download(_ book: Book) async throws -> String {
         let local = textFile(book.id)
+        // Bundled books are read from the app. A copy in BOOKS keeps them on the shelf.
+        if let s = PaliCanon.text(of: book) {
+            if !FileManager.default.fileExists(atPath: local.path) { try? s.write(to: local, atomically: true, encoding: .utf8) }
+            return s
+        }
         if let s = try? String(contentsOf: local, encoding: .utf8) { return s }
         let url = URL(string: "https://www.gutenberg.org/cache/epub/\(book.id)/pg\(book.id).txt")!
         let (data, resp) = try await Web.get(url)
@@ -367,6 +372,16 @@ enum BookFormatter {
         headPara.paragraphSpacing = round(size * 1.2)
         headPara.lineHeightMultiple = 1.2
 
+        let canon = PaliCanon.contains(book.id)
+        let minorFont = fm.convert(body(size), toHaveTrait: .boldFontMask)
+        let minorPara = NSMutableParagraphStyle()
+        minorPara.alignment = .center
+        minorPara.paragraphSpacingBefore = round(size * 1.4)
+        minorPara.paragraphSpacing = round(size * 0.6)
+        let contextPara = NSMutableParagraphStyle()
+        contextPara.alignment = .center
+        contextPara.lineHeightMultiple = 1.2
+
         let titlePara = NSMutableParagraphStyle()
         titlePara.alignment = .center
         titlePara.paragraphSpacingBefore = round(size * 6)
@@ -392,6 +407,35 @@ enum BookFormatter {
             guard !lines.isEmpty else { continue }
             let joined = lines.map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: " ")
             if joined.hasPrefix("[Illustration") { continue }
+
+            // The Pali Canon marks its headings: "# " starts a chapter, "## " a smaller heading.
+            if canon, lines[0].hasPrefix("#") {
+                let minor = lines[0].hasPrefix("## ")
+                var heading = lines.map { $0.trimmingCharacters(in: .whitespaces) }
+                heading[0] = String(heading[0].dropFirst(minor ? 3 : 2))
+                if minor {
+                    out.append(NSAttributedString(string: heading.joined(separator: "\n") + "\n",
+                                                  attributes: [.font: minorFont, .foregroundColor: ink, .paragraphStyle: minorPara]))
+                } else {
+                    if out.length - lastBreak > 1500 {
+                        out.append(NSAttributedString(string: "\u{0C}", attributes: [.font: font]))
+                        lastBreak = out.length
+                    }
+                    chapters.append((heading.joined(separator: " \u{00B7} "), out.length))
+                    // Chapter and section names sit quietly above the sutta's own title.
+                    for (i, line) in heading.dropLast().enumerated() {
+                        let para = contextPara.mutableCopy() as! NSMutableParagraphStyle
+                        para.paragraphSpacingBefore = i == 0 ? round(size * 2) : 0
+                        out.append(NSAttributedString(string: line + "\n", attributes: [.font: font, .foregroundColor: dim, .paragraphStyle: para]))
+                    }
+                    let para = headPara.mutableCopy() as! NSMutableParagraphStyle
+                    if heading.count > 1 { para.paragraphSpacingBefore = round(size * 0.6) }
+                    out.append(NSAttributedString(string: heading.last! + "\n",
+                                                  attributes: [.font: headingFont, .foregroundColor: ink, .paragraphStyle: para]))
+                }
+                afterHeading = true
+                continue
+            }
 
             let letters = joined.filter { $0.isLetter }
             let upper = !letters.isEmpty && letters == letters.uppercased()

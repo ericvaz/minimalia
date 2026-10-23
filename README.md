@@ -15,7 +15,7 @@ Everything opens inside Minimalia and returns to the prompt with Esc.
 | `WRITE` | Write | One page a day, with the line you are writing held in the middle of the screen |
 | `FOLIO` | Minimalia Folio | Word processor with menus and a toolbar. Opens and saves .docx, .doc, .odt, .rtf and .txt, prints and exports PDF |
 | `BROWSE` | Minimalia Browse | The real web, shown in greyscale, with ads, trackers and cookie banners blocked and nothing playing by itself. Any page can be turned into plain text |
-| `SHELF` | Minimalia Shelf | Project Gutenberg's free library, organised into shelves, read a page at a time like an e-reader |
+| `SHELF` | Minimalia Shelf | Project Gutenberg's free library, organised into shelves, and the discourses of the Pali Canon, read a page at a time like an e-reader |
 | `LETTERS` | Minimalia Letters | Your mail, one letter at a time, as calm text. Gmail and most other accounts |
 | `FILM` | Minimalia Film | The films on your Mac or an external drive, arranged like a quiet cinema and played in greyscale |
 | `GAMES` | Minimalia Games | BLOCKS (falling blocks, made for Minimalia), your own DOS games in DOSBox Staging, Mega Drive, SNES, NES and Game Boy games in RetroArch, and classic Macintosh through Infinite Mac |
@@ -85,7 +85,7 @@ This compiles Sources/ into Minimalia.app and WordApp/ into Minimalia Folio.app,
 
 ## Credits
 
-Text is set in Atkinson Hyperlegible Mono by the Braille Institute, under the SIL Open Font License (Resources/Fonts/OFL.txt). Books come from Project Gutenberg. The start-up chime is not included in this repository; add your own as Resources/Chime.mp3.
+Text is set in Atkinson Hyperlegible Mono by the Braille Institute, under the SIL Open Font License (Resources/Fonts/OFL.txt). Books come from Project Gutenberg. The Pali Canon is Bhikkhu Sujato's translation of the discourses, published by SuttaCentral (suttacentral.net) and dedicated to the public domain under CC0; Tools/make_canon.swift builds it from SuttaCentral's bilara-data. The translator asks that the translation not be used with AI, so SUMMARIZE is switched off for these texts. The start-up chime is not included in this repository; add your own as Resources/Chime.mp3.
 
 ## Contributing
 

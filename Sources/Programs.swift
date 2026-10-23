@@ -40,7 +40,7 @@ enum ProgramRegistry {
                      "\u{2318}S saves, \u{2318}P prints, \u{2318}= and \u{2318}- zoom.",
                      "\u{2318}B bold, \u{2318}I italic, \u{2318}U underline, \u{2325}\u{2318}1 to 3 headings.",
                      "Esc returns to the prompt and asks before losing changes."]),
-        Entry(command: "SHELF", name: "Minimalia Shelf", summary: "Project Gutenberg's 75,000 free books, read a page at a time",
+        Entry(command: "SHELF", name: "Minimalia Shelf", summary: "Project Gutenberg's 75,000 free books and the Pali Canon, read a page at a time",
               usage: [("SHELF", "Free books, read a page at a time"),
                       ("SHELF words", "Find a book by title or author")],
               keys: ["Shelves on the left, books on the right. Type to search, Return to read.",

@@ -1277,11 +1277,13 @@ final class Shell {
         let arg = rest.trimmingCharacters(in: .whitespaces)
         var text: String
         var label: String
+        var source: URL?
         if arg.isEmpty {
             var page = lastPage
             if page == nil { page = await lastBrowsedText() }
             guard let p = page else { error("Nothing to summarize. Open a page first, or name a file."); return }
             text = p.bareText
+            source = p.url
             label = p.title
         } else if case .link(let u, let title)? = listItem(arg) {
             console.writeLine("Connecting to \(u.host ?? "")...", .dim)
@@ -1289,6 +1291,7 @@ final class Shell {
                 let p = try await Web.page(u)
                 lastPage = p
                 text = p.bareText
+                source = u
                 label = title
             } catch {
                 self.error("Unable to read page: \(Web.describe(error))")
@@ -1304,6 +1307,10 @@ final class Shell {
                 self.error(error.localizedDescription)
                 return
             }
+        }
+        if PaliCanon.isCanon(text) || PaliCanon.isCanon(source) {
+            error("The translator of these texts asks that they not be used with AI, so Minimalia does not summarize them.")
+            return
         }
         text = text.replacingOccurrences(of: "\n{2,}", with: "\n", options: .regularExpression)
         guard text.trimmingCharacters(in: .whitespacesAndNewlines).count > 40 else { error("There is not enough text to summarize."); return }
